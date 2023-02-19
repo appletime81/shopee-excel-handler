@@ -1,6 +1,15 @@
 import xlsxwriter
 import openpyxl
 from openpyxl.utils import get_column_letter
+from openpyxl.styles import (
+    PatternFill,
+    Border,
+    Side,
+    Alignment,
+    Protection,
+    Font,
+    borders,
+)
 import os
 import shutil
 
@@ -48,13 +57,23 @@ def main(file_name: str, sheet_name: str):
                 cell_col_name.fill = openpyxl.styles.PatternFill(
                     fill_type="solid", fgColor="ED7D31"
                 )
-                print(get_column_letter(i + 106))
+
                 # set width
                 if not col_name:
                     # let col invisible
-                    worksheet.column_dimensions[get_column_letter(i + 106)].hidden = True
+                    worksheet.column_dimensions[
+                        get_column_letter(i + 106)
+                    ].hidden = True
                 else:
-                    worksheet.column_dimensions[get_column_letter(i + 106)].width = 20
+                    worksheet.column_dimensions[get_column_letter(i + 106)].width = 16
+                    # set border line color
+                    thin_border = Border(
+                        left=Side(border_style=borders.BORDER_THIN, color="FF000000"),
+                        right=Side(border_style=borders.BORDER_THIN, color="FF000000"),
+                        top=Side(border_style=borders.BORDER_THIN, color="FF000000"),
+                        bottom=Side(border_style=borders.BORDER_THIN, color="FF000000"),
+                    )
+                    cell_col_name.border = thin_border
         for column in range(1, max_column + 1):
             if column == max_column and row > 1:
                 # DB
