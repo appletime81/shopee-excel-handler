@@ -9,6 +9,7 @@
 # print(convert_excel_column_to_number("CP"))
 
 import openpyxl
+
 # sheet_name = "PM值 先轉成數字 再貼"
 sheet_name = "清單"
 workbook = openpyxl.load_workbook("data/BI.xlsx")

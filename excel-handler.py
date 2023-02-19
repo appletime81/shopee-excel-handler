@@ -1,9 +1,11 @@
 import xlsxwriter
 import openpyxl
+from openpyxl.utils import get_column_letter
 import os
 import shutil
 
 COL_NMAES = [
+    None,
     "MDT RSRP",
     "site1昨日最差PRB",
     "site2昨日最差PRB",
@@ -12,6 +14,7 @@ COL_NMAES = [
     "昨日最差PRB的SiteID	",
     "Weekday",
     "RSRP(MDT)",
+    None,
     "5G True User",
     "Site1~3 近3小時干擾>-105的筆數",
     "昨日最差PRB(4)",
@@ -20,8 +23,6 @@ COL_NMAES = [
     "RuleBase",
     "OM回覆客訴原因",
 ]
-
-
 
 
 def main(file_name: str, sheet_name: str):
@@ -42,49 +43,86 @@ def main(file_name: str, sheet_name: str):
             for i, col_name in enumerate(COL_NMAES):
                 cell_col_name = worksheet.cell(row, max_column + i + 1)
                 cell_col_name.value = COL_NMAES[i]
+
+                # set background color
+                cell_col_name.fill = openpyxl.styles.PatternFill(
+                    fill_type="solid", fgColor="ED7D31"
+                )
+                print(get_column_letter(i + 106))
+                # set width
+                if not col_name:
+                    # let col invisible
+                    worksheet.column_dimensions[get_column_letter(i + 106)].hidden = True
+                else:
+                    worksheet.column_dimensions[get_column_letter(i + 106)].width = 20
         for column in range(1, max_column + 1):
             if column == max_column and row > 1:
+                # DB
                 cell = worksheet.cell(row, column + 1)
+                cell.value = None
+
+                # DC
+                cell = worksheet.cell(row, column + 2)
                 cell.value = f'=IF(CP{row}<-10,CP{row},IF(ISERROR(AVERAGE(CN{row}:CR{row})),"",AVERAGE(CN{row}:CR{row})))'
 
-                cell = worksheet.cell(row, column + 2)
+                # DD
+                cell = worksheet.cell(row, column + 3)
+                cell.number_format = "0%"
                 cell.value = f'=IF(AC{row}<>"",AC{row}/100,"")'
 
-                cell = worksheet.cell(row, column + 3)
+                # DE
+                cell = worksheet.cell(row, column + 4)
                 cell.value = f'=IF(AW{row}<>"",AW{row}/100,"")'
 
-                cell = worksheet.cell(row, column + 4)
+                # DF
+                cell = worksheet.cell(row, column + 5)
                 cell.value = f'=IF(BQ{row}<>"",BQ{row}/100,"")'
 
-                cell = worksheet.cell(row, column + 5)
-                cell.value = f'=MAX(DD{row},DE{row},DF{row})'
-
+                # DG
                 cell = worksheet.cell(row, column + 6)
+                cell.value = f"=MAX(DD{row},DE{row},DF{row})"
+
+                # DH
+                cell = worksheet.cell(row, column + 7)
                 cell.value = f'=IF(DG{row}=DD{row},W{row},IF(DG{row}=DE{row},X{row},IF(DG{row}=DF{row},Y{row},"")))'
 
-                cell = worksheet.cell(row, column + 7)
+                # DI
+                cell = worksheet.cell(row, column + 8)
+                cell.value = f"=VLOOKUP(G{row},#REF!,2,0)"
+
+                # DJ
+                cell = worksheet.cell(row, column + 9)
                 cell.value = f'=IF(DC{row}>-10,"",IF(ISERROR(DC{row}),"",CONCATENATE(INT(DC{row}/5)*5+5,"~",INT(DC{row}/5)*5)))'
 
-                cell = worksheet.cell(row, column + 8)
+                # DK
+                cell = worksheet.cell(row, column + 10)
+                cell.value = None
+
+                # DL
+                cell = worksheet.cell(row, column + 11)
                 cell.value = f'=IF(AND(OR(N{row}="5G",N{row}="I5G"),O{row}="5GNSA"),"5G True User",IF(OR(N{row}="2G",N{row}="3G",N{row}="4G",N{row}="I4G"),"4G",IF(AND(OR(N{row}="5G",N{row}="I5G"),O{row}<>"5GNSA"),"5G非TU","")))'
 
-                cell = worksheet.cell(row, column + 9)
-                cell.value = f'=COUNTIFS(AD{row}:AF{row},">-105",AD{row}:AF{row},"<0")+COUNTIFS(AX{row}:AZ{row},">-105",AX{row}:AZ{row},"<0")+COUNTIFS(BR{row}:BT{row},">-105",BR{row}:BT{row},"<0")'
-
-                cell = worksheet.cell(row, column + 10)
-                cell.value = f'=COUNTIFS(AD{row}:AF{row},">-105",AD{row}:AF{row},"<0")+COUNTIFS(AX{row}:AZ{row},">-105",AX{row}:AZ{row},"<0")+COUNTIFS(BR{row}:BT{row},">-105",BR{row}:BT{row},"<0")'
-
-                cell = worksheet.cell(row, column + 11)
-                cell.value = f'=ROUND(MAX(DD{row},DE{row},DF{row})*100/5,0)*0.05'
-
+                # DM
                 cell = worksheet.cell(row, column + 12)
-                cell.value = f'=IF(R{row}="作業","障礙",\
+                cell.value = f'=COUNTIFS(AD{row}:AF{row},">-105",AD{row}:AF{row},"<0")+COUNTIFS(AX{row}:AZ{row},">-105",AX{row}:AZ{row},"<0")+COUNTIFS(BR{row}:BT{row},">-105",BR{row}:BT{row},"<0")'
+
+                # DN
+                cell = worksheet.cell(row, column + 13)
+                cell.value = f"=ROUND(MAX(DD{row},DE{row},DF{row})*100/5,0)*0.05"
+
+                # DO
+                cell = worksheet.cell(row, column + 14)
+                cell.value = f'=IF(DC{row}>-10,"",ROUND(DC{row}/5,0)*5)'
+
+                # DP
+                cell = worksheet.cell(row, column + 15)
+                cell.value = f'=IF(R2="作業","障礙",\
 IF(R{row}="障礙","障礙",\
 IF(R{row}="抗爭","抗爭",\
 IF(R{row}="40055重大障礙","40055重大障礙",\
 IF(R{row}="非TWM問題的障礙","非TWM問題的障礙",\
 IF(U{row}=35806,"非TWM問題的障礙",\
-IF( OR(AND(AJ{row}<>"",AJ{row}>0,AJ2<0.7),\
+IF( OR(AND(AJ{row}<>"",AJ{row}>0,AJ{row}<0.7),\
        AND(AK{row}<>"",AK{row}>0,AK{row}<0.7),\
        AND(AL{row}<>"",AL{row}>0,AL{row}<0.7),\
        AND(AP{row}<>"",AP{row}>0,AP{row}<0.7),\
@@ -119,10 +157,19 @@ IF( OR(AND(DD{row}<>"",DD{row}>0.8),AND(DE{row}<>"",DE{row}>0.8),AND(DF{row}<>""
 IF(AND(DC{row}>-106,DC{row}<-30),"RSRP優於-106",\
 IF(DC{row}<=-106,"RSRP劣於-106",\
 ""))))))))))))))))'
+                # DQ
+                cell = worksheet.cell(row, column + 16)
+                cell.value = f'=IF(ISERROR(SEARCH(">>檢查",AA{row})),"",MID(AA{row},SEARCH("PM分析:",AA{row})+5,SEARCH(">>檢查",AA{row})-SEARCH("PM分析:",AA{row})-5))'
 
-
-
-
+                # DR
+                cell = worksheet.cell(row, column + 17)
+                cell.value = f'=IF(T{row}="因客訴地點人多，導致收訊擁擠","基站擁擠",\
+IF(T{row}="因應特別活動調整相關參數導致","TTC",\
+IF(OR(T{row}="基站障礙問題查測中",T{row}="基站問題待料中",T{row}="基站障礙問題已修復",T{row}="施工作業已恢復",T{row}="基站抗爭暫時關閉",T{row}="基站抗爭持續關閉中",T{row}="基站抗爭已復站",T{row}="基地台抗爭拆站",T{row}="基地台群體抗爭",T{row}="基站隱藏性障礙問題已修復"),"基站障礙",\
+IF(OR(R{row}="作業",R{row}="障礙",R{row}="抗爭"),"基站障礙",\
+IF(OR(T{row}="外在不明干擾影響，查測中",T{row}="干擾問題已排除",T{row}="外在不明干擾(大規模)影響",T{row}="干擾(大規模)問題已排除"),"干擾",\
+IF(R{row}="干擾","干擾",\
+""))))))'
 
     # save file
     workbook.save("output.xlsx")
@@ -131,4 +178,3 @@ IF(DC{row}<=-106,"RSRP劣於-106",\
 if __name__ == "__main__":
     os.system("rm -rf output.xlsx")
     main("template.xlsx", "PM值 先轉成數字 再貼")
-    # load_original_excel_file("data/BI.xlsx", "清單")
