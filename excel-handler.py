@@ -1,3 +1,5 @@
+from pprint import pprint
+from configparser import ConfigParser
 import xlsxwriter
 import openpyxl
 from openpyxl.utils import get_column_letter
@@ -13,7 +15,7 @@ from openpyxl.styles import (
 import os
 import shutil
 
-COL_NMAES = [
+COL_NAMES = [
     None,
     "MDT RSRP",
     "site1昨日最差PRB",
@@ -34,12 +36,12 @@ COL_NMAES = [
 ]
 
 
-def main(file_name: str, sheet_name: str):
+def main(input_file: str, sheet_name: str, output_file: str):
     # copy original excel file called output.xlsx use shutil
-    shutil.copyfile(file_name, "output.xlsx")
+    shutil.copyfile(f"{input_file}", f"{output_file}")
 
     # load output.xlsx
-    workbook = openpyxl.load_workbook("output.xlsx")
+    workbook = openpyxl.load_workbook(f"{output_file}")
     worksheet = workbook[sheet_name]
 
     # get max row and column
@@ -49,9 +51,9 @@ def main(file_name: str, sheet_name: str):
     # setting value
     for row in range(1, max_row + 1):
         if row == 1:
-            for i, col_name in enumerate(COL_NMAES):
+            for i, col_name in enumerate(COL_NAMES):
                 cell_col_name = worksheet.cell(row, max_column + i + 1)
-                cell_col_name.value = COL_NMAES[i]
+                cell_col_name.value = COL_NAMES[i]
 
                 # set background color
                 cell_col_name.fill = openpyxl.styles.PatternFill(
@@ -91,10 +93,12 @@ def main(file_name: str, sheet_name: str):
 
                 # DE
                 cell = worksheet.cell(row, column + 4)
+                cell.number_format = "0%"
                 cell.value = f'=IF(AW{row}<>"",AW{row}/100,"")'
 
                 # DF
                 cell = worksheet.cell(row, column + 5)
+                cell.number_format = "0%"
                 cell.value = f'=IF(BQ{row}<>"",BQ{row}/100,"")'
 
                 # DG
@@ -191,9 +195,20 @@ IF(R{row}="干擾","干擾",\
 ""))))))'
 
     # save file
-    workbook.save("output.xlsx")
+    workbook.save(f"{output_file}")
 
 
 if __name__ == "__main__":
-    os.system("rm -rf output.xlsx")
-    main("template.xlsx", "PM值 先轉成數字 再貼")
+    # os.system("rm -rf output.xlsx")
+    configparser = ConfigParser()
+    configparser.read("setting.ini")
+    section = "original_file_info"
+    if configparser.has_section(section):
+        original_file_info = dict(configparser.items(section))
+    input_file = f"{original_file_info['input_file_path']}{original_file_info['input_file_name']}"
+    output_file_name = f"{original_file_info['output_file_name']}"
+    output_file_path = f"{original_file_info['output_file_path']}"
+
+
+    os.system(f"del {output_file_path}{output_file_name}")
+    main(f"{input_file}", "PM值 先轉成數字 再貼", f"{output_file_path}{output_file_name}")
