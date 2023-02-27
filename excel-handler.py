@@ -1,6 +1,10 @@
-from pprint import pprint
+import os
+import time
+import shutil
+import logging
+from tqdm import tqdm
 from configparser import ConfigParser
-import xlsxwriter
+from alive_progress import alive_bar
 import openpyxl
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import (
@@ -12,9 +16,8 @@ from openpyxl.styles import (
     Font,
     borders,
 )
-import os
-import shutil
 
+logger = logging.getLogger("alive_progress")
 COL_NAMES = [
     None,
     "MDT RSRP",
@@ -37,8 +40,30 @@ COL_NAMES = [
 
 
 def main(input_file: str, sheet_name: str, output_file: str):
+    # check if output.xlsx exists
+    isExists = False
+    print(os.path.isfile(f"{output_file}"))
+    if os.path.isfile(f"{output_file}"):
+        isExists = True
+        original_max_rows = openpyxl.load_workbook(f"{output_file}")[sheet_name].max_row
+
+        # append input.xlsx to output.xlsx
+        workbook = openpyxl.load_workbook(f"{output_file}")
+        worksheet = workbook[sheet_name]
+        workbook2 = openpyxl.load_workbook(f"{input_file}")
+        worksheet2 = workbook2[sheet_name]
+        for row in worksheet2.iter_rows(min_row=2):
+            # get all values from row
+            values = [cell.value for cell in row]
+            # append row to output.xlsx
+            worksheet.append(values)
+        workbook.save(f"{output_file}")
+    else:
+        original_max_rows = 0
+
     # copy original excel file called output.xlsx use shutil
-    shutil.copyfile(f"{input_file}", f"{output_file}")
+    if not isExists:
+        shutil.copyfile(f"{input_file}", f"{output_file}")
 
     # load output.xlsx
     workbook = openpyxl.load_workbook(f"{output_file}")
@@ -46,11 +71,14 @@ def main(input_file: str, sheet_name: str, output_file: str):
 
     # get max row and column
     max_row = worksheet.max_row
-    max_column = worksheet.max_column
+
+    # max col is input.xlsx's
+    max_column = openpyxl.load_workbook(f"{input_file}")[sheet_name].max_column
 
     # setting value
-    for row in range(1, max_row + 1):
-        if row == 1:
+
+    for row in tqdm(range(original_max_rows + 1, max_row + 1)):
+        if row == 1 and not isExists:
             for i, col_name in enumerate(COL_NAMES):
                 cell_col_name = worksheet.cell(row, max_column + i + 1)
                 cell_col_name.value = COL_NAMES[i]
@@ -76,6 +104,7 @@ def main(input_file: str, sheet_name: str, output_file: str):
                         bottom=Side(border_style=borders.BORDER_THIN, color="FF000000"),
                     )
                     cell_col_name.border = thin_border
+
         for column in range(1, max_column + 1):
             if column == max_column and row > 1:
                 # DB
@@ -193,22 +222,43 @@ IF(OR(R{row}="作業",R{row}="障礙",R{row}="抗爭"),"基站障礙",\
 IF(OR(T{row}="外在不明干擾影響，查測中",T{row}="干擾問題已排除",T{row}="外在不明干擾(大規模)影響",T{row}="干擾(大規模)問題已排除"),"干擾",\
 IF(R{row}="干擾","干擾",\
 ""))))))'
-
+        time.sleep(0.01)
     # save file
     workbook.save(f"{output_file}")
+
+    # set each cell style as its second row
+    if isExists:
+        workbook = openpyxl.load_workbook(f"{output_file}")
+        worksheet = workbook[sheet_name]
+        for row in tqdm(
+            worksheet.iter_rows(
+                min_row=original_max_rows + 1,
+                max_row=worksheet.max_row,
+                min_col=1,
+                max_col=worksheet.max_column,
+            ),
+            total=worksheet.max_row - original_max_rows,
+        ):
+            for cell in row:
+                # set every cell style as its second row
+                if not cell.row % 2:
+                    cell._style = worksheet.cell(2, cell.column)._style
+                else:
+                    cell._style = worksheet.cell(3, cell.column)._style
+            time.sleep(0.01)
+        workbook.save(f"{output_file}")
 
 
 if __name__ == "__main__":
     # os.system("rm -rf output.xlsx")
     configparser = ConfigParser()
-    configparser.read("setting.ini")
-    section = "original_file_info"
+    configparser.read("setting.ini", encoding="utf-8")
+    section = "file_info"
     if configparser.has_section(section):
-        original_file_info = dict(configparser.items(section))
-    input_file = f"{original_file_info['input_file_path']}{original_file_info['input_file_name']}"
-    output_file_name = f"{original_file_info['output_file_name']}"
-    output_file_path = f"{original_file_info['output_file_path']}"
+        file_info = dict(configparser.items(section))
+    input_file = f"{file_info['input_file_path']}{file_info['input_file_name']}"
+    output_file_name = f"{file_info['output_file_name']}"
+    output_file_path = f"{file_info['output_file_path']}"
 
-
-    os.system(f"del {output_file_path}{output_file_name}")
-    main(f"{input_file}", "PM值 先轉成數字 再貼", f"{output_file_path}{output_file_name}")
+    # os.system(f"del {output_file_path}{output_file_name}")
+    main(f"{input_file}", file_info['sheet_name'], f"{output_file_path}{output_file_name}")
