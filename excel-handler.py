@@ -39,17 +39,16 @@ COL_NAMES = [
 ]
 
 
-def main(input_file: str, sheet_name: str, output_file: str):
+def main(input_file: str, sheet_name: str, output_file: str, output_sheet_name: str):
     # check if output.xlsx exists
     isExists = False
-    print(os.path.isfile(f"{output_file}"))
-    if os.path.isfile(f"{output_file}"):
+    if os.path.isfile(f"{output_file}"):  # 檢查BI檔是否存在，如果有把da的資料加到BI裡面
         isExists = True
-        original_max_rows = openpyxl.load_workbook(f"{output_file}")[sheet_name].max_row
+        original_max_rows = openpyxl.load_workbook(f"{output_file}")[output_sheet_name].max_row
 
         # append input.xlsx to output.xlsx
         workbook = openpyxl.load_workbook(f"{output_file}")
-        worksheet = workbook[sheet_name]
+        worksheet = workbook[output_sheet_name]
         workbook2 = openpyxl.load_workbook(f"{input_file}")
         worksheet2 = workbook2[sheet_name]
         for row in worksheet2.iter_rows(min_row=2):
@@ -62,12 +61,20 @@ def main(input_file: str, sheet_name: str, output_file: str):
         original_max_rows = 0
 
     # copy original excel file called output.xlsx use shutil
-    if not isExists:
+    if not isExists:  # 如果BI檔不存在，建立一個新的BI檔
         shutil.copyfile(f"{input_file}", f"{output_file}")
 
     # load output.xlsx
     workbook = openpyxl.load_workbook(f"{output_file}")
-    worksheet = workbook[sheet_name]
+
+    # 讀取sheet
+    if not isExists:
+        worksheet = workbook[sheet_name]
+    else:
+        worksheet = workbook[output_sheet_name]
+
+    # 命名輸出的sheet名稱
+    worksheet.title = output_sheet_name
 
     # get max row and column
     max_row = worksheet.max_row
@@ -75,8 +82,7 @@ def main(input_file: str, sheet_name: str, output_file: str):
     # max col is input.xlsx's
     max_column = openpyxl.load_workbook(f"{input_file}")[sheet_name].max_column
 
-    # setting value
-
+    # 執行excel的邏輯判斷式
     for row in tqdm(range(original_max_rows + 1, max_row + 1)):
         if row == 1 and not isExists:
             for i, col_name in enumerate(COL_NAMES):
@@ -226,10 +232,10 @@ IF(R{row}="干擾","干擾",\
     # save file
     workbook.save(f"{output_file}")
 
-    # set each cell style as its second row
+    # 設定樣式，比照原有的BI檔樣式
     if isExists:
         workbook = openpyxl.load_workbook(f"{output_file}")
-        worksheet = workbook[sheet_name]
+        worksheet = workbook[output_sheet_name]
         for row in tqdm(
             worksheet.iter_rows(
                 min_row=original_max_rows + 1,
@@ -259,6 +265,6 @@ if __name__ == "__main__":
     input_file = f"{file_info['input_file_path']}{file_info['input_file_name']}"
     output_file_name = f"{file_info['output_file_name']}"
     output_file_path = f"{file_info['output_file_path']}"
-
+    output_sheet_name = f"{file_info['output_sheet_name']}"
     # os.system(f"del {output_file_path}{output_file_name}")
-    main(f"{input_file}", file_info['sheet_name'], f"{output_file_path}{output_file_name}")
+    main(f"{input_file}", file_info['sheet_name'], f"{output_file_path}{output_file_name}", output_sheet_name)
