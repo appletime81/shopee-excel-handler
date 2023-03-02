@@ -1,23 +1,19 @@
 import os
 import time
 import shutil
-import logging
+import openpyxl
 from tqdm import tqdm
 from configparser import ConfigParser
-from alive_progress import alive_bar
-import openpyxl
+
+
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import (
     PatternFill,
     Border,
     Side,
-    Alignment,
-    Protection,
-    Font,
     borders,
 )
 
-logger = logging.getLogger("alive_progress")
 COL_NAMES = [
     None,
     "MDT RSRP",
@@ -44,7 +40,9 @@ def main(input_file: str, sheet_name: str, output_file: str, output_sheet_name: 
     isExists = False
     if os.path.isfile(f"{output_file}"):  # 檢查BI檔是否存在，如果有把da的資料加到BI裡面
         isExists = True
-        original_max_rows = openpyxl.load_workbook(f"{output_file}")[output_sheet_name].max_row
+        original_max_rows = openpyxl.load_workbook(f"{output_file}")[
+            output_sheet_name
+        ].max_row
 
         # append input.xlsx to output.xlsx
         workbook = openpyxl.load_workbook(f"{output_file}")
@@ -256,7 +254,7 @@ IF(R{row}="干擾","干擾",\
 
 
 if __name__ == "__main__":
-    # os.system("rm -rf output.xlsx")
+    # 讀取ini檔
     configparser = ConfigParser()
     configparser.read("setting.ini", encoding="utf-8")
     section = "file_info"
@@ -266,5 +264,10 @@ if __name__ == "__main__":
     output_file_name = f"{file_info['output_file_name']}"
     output_file_path = f"{file_info['output_file_path']}"
     output_sheet_name = f"{file_info['output_sheet_name']}"
-    # os.system(f"del {output_file_path}{output_file_name}")
-    main(f"{input_file}", file_info['sheet_name'], f"{output_file_path}{output_file_name}", output_sheet_name)
+
+    main(
+        f"{input_file}",
+        file_info["sheet_name"],
+        f"{output_file_path}{output_file_name}",
+        output_sheet_name,
+    )
